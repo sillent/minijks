@@ -1,18 +1,18 @@
 use std::{fs::File, io::Read};
 
-use jks;
+use minijks;
 
 fn main() {
     let mut buf = vec![];
-    let mut f = File::open("examples/cacerts").unwrap();
+    let mut f = File::open("examples/file.jks").unwrap();
     f.read_to_end(&mut buf).unwrap();
-    let certs = jks::Store::parse(&buf, "".to_owned()).unwrap();
+    let certs = minijks::Store::parse(&buf, None).unwrap();
     for cert in certs.certs.unwrap() {
         println!(
             "cert alias = {}, cert cn = {:?}, and serial = {:?}",
             cert.alias,
-            cert.cert.subject_common_name(),
-            cert.cert.serial_number_asn1(),
+            cert.certificate.cert.subject_common_name(),
+            cert.certificate.cert.serial_number_asn1(),
         )
     }
 }
