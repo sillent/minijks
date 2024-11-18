@@ -9,6 +9,9 @@ license = "MIT OR Apache-2.0"
 repository = "github.com/sillent/minijks"
 keywords = ["JKS", "cryptography", "keystore"]
 categories = ["cryptography"]
+exclude = [
+  "examples/*",
+]
 
 [dependencies]
 x509-certificate = "0.24.0"
