@@ -10,8 +10,10 @@ use x509_certificate::certificate::X509Certificate;
 
 const MAGIC: [u8; 4] = [0xFE, 0xED, 0xFE, 0xED];
 
+/// Java KeyStore version
+/// Support only Version 2
 #[derive(PartialEq)]
-pub enum Version {
+enum Version {
     Unsupported,
     V2,
 }
@@ -26,7 +28,7 @@ impl From<[u8; 4]> for Version {
 }
 
 #[derive(PartialEq)]
-pub enum EntryType {
+enum EntryType {
     KeyPair,
     Certs,
 }
@@ -41,26 +43,26 @@ impl From<[u8; 4]> for EntryType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Store {
     pub certs: Vec<CertInfo>,
     pub key_pairs: Vec<KeyPair>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct CertInfo {
     pub alias: String,
     pub timestamp: u64,
     pub certificate: Cert,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Cert {
     pub raw: Vec<u8>,
     pub cert: X509Certificate,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct KeyPair {
     pub alias: String,
     pub timestamp: u64,
@@ -68,13 +70,13 @@ pub struct KeyPair {
     pub cert_chain: Vec<KeyPairCert>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct KeyPairCert {
     pub raw: Vec<u8>,
     pub cert: X509Certificate,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Options {
     pub password: String,
     pub skip_verify: bool,
