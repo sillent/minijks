@@ -1,7 +1,8 @@
 use super::Cert;
 use std::error::Error;
-use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::io::{BufReader, Read};
 use x509_certificate::certificate::X509Certificate;
+
 pub(crate) fn read_cert<T>(data: &mut BufReader<T>) -> Result<Cert, Box<dyn Error>>
 where
     T: Read,
@@ -28,7 +29,7 @@ where
     match data.read_exact(&mut buf) {
         Ok(_) => Ok(buf),
         Err(e) if e.kind() == UnexpectedEof => Err(format!(
-            "buffer is too short, at least {} are required",
+            "buffer is too short, at least {} bytes are required",
             len
         )),
         Err(e) => Err(format!("error reading bytes: {e}")),
@@ -96,6 +97,7 @@ where
     }
 }
 
+/// read 64 bytes from buffer and return as u64 BE
 pub(crate) fn read_timestamp<T>(data: &mut BufReader<T>) -> Result<u64, String>
 where
     T: Read,

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::io::{BufReader, Read};
 
+use read::read_cert;
 use x509_certificate::certificate::X509Certificate;
 
 const MAGIC: [u8; 4] = [0xFE, 0xED, 0xFE, 0xED];
@@ -42,8 +43,8 @@ impl From<[u8; 4]> for EntryType {
 
 #[derive(Debug, PartialEq)]
 pub struct Store {
-    pub certs: Option<Vec<CertInfo>>,
-    pub key_pairs: Option<Vec<KeyPair>>,
+    pub certs: Vec<CertInfo>,
+    pub key_pairs: Vec<KeyPair>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -51,8 +52,6 @@ pub struct CertInfo {
     pub alias: String,
     pub timestamp: u64,
     pub certificate: Cert,
-    // pub raw: Vec<u8>,
-    // pub cert: X509Certificate,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -66,7 +65,6 @@ pub struct KeyPair {
     pub alias: String,
     pub timestamp: u64,
     pub encrypted_key: Vec<u8>,
-    pub raw_key: Vec<u8>,
     pub cert_chain: Vec<KeyPairCert>,
 }
 
@@ -108,7 +106,7 @@ impl Store {
         if Version::from(version) == Version::Unsupported {
             return Err("unsupported version, supported only version 2".to_owned())?;
         }
-        let mut keypairs: Vec<KeyPair> = vec![];
+        let mut key_pairs: Vec<KeyPair> = vec![];
         let mut certs: Vec<CertInfo> = vec![];
         let mut opts = opts.unwrap_or_default();
 
@@ -116,15 +114,12 @@ impl Store {
         for _ in 0..entries {
             let entry_type = EntryType::from(read::read_u32(&mut buffer)?);
             match entry_type {
-                EntryType::KeyPair => keypairs.push(process_key_pair(&mut buffer, &mut opts)?),
+                EntryType::KeyPair => key_pairs.push(process_key_pair(&mut buffer, &mut opts)?),
                 EntryType::Certs => certs.push(process_cert(&mut buffer)?),
             }
         }
 
-        Ok(Store {
-            certs: Some(certs),
-            key_pairs: Some(keypairs),
-        })
+        Ok(Store { certs, key_pairs })
     }
 }
 
@@ -134,24 +129,11 @@ where
 {
     let alias = read::read_str(data)?;
     let timestamp = read::read_timestamp(data)?;
-    // let cert_type = read_str(data)?;
-    // if !cert_type.eq("X.509") {
-    //     return Err(format!("not supported certificate type: {}", cert_type))?;
-    // }
-    // let cert_length = read_u32(data)?;
-    // let cert_der = read_bytes(data, u32::from_be_bytes(cert_length) as usize)?;
-    // let parsed_cert = X509Certificate::from_der(cert_der.clone())?;
     let certificate = read::read_cert(data)?;
-    // let certificate = Cert {
-    //     raw: cert_der,
-    //     cert: parsed_cert,
-    // };
     Ok(CertInfo {
         alias,
         timestamp,
         certificate,
-        // raw: cert_der,
-        // cert: parsed_cert,
     })
 }
 
@@ -164,9 +146,24 @@ where
 {
     let alias = read::read_str(data)?;
     let timestamp = read::read_timestamp(data)?;
-    let password = opts.key_passwords.get(&alias).unwrap_or(&opts.password);
-    let key_length = read::read_u32(data)?;
-    let key = read::read_bytes(data, u32::from_be_bytes(key_length) as usize)?;
+    let _password = opts.key_passwords.get(&alias).unwrap_or(&opts.password);
+    let enc_key_len = u32::from_be_bytes(read::read_u32(data)?);
+    let enc_key = read::read_bytes(data, enc_key_len as usize)?;
+    let certs_entries_count = u32::from_be_bytes(read::read_u32(data)?);
+    let mut cert_chains = vec![];
+    for _ in 0..certs_entries_count {
+        let cert = read_cert(data)?;
+        let kps = KeyPairCert {
+            raw: cert.raw,
+            cert: cert.cert,
+        };
+        cert_chains.push(kps);
+    }
 
-    unimplemented!("key pairs")
+    Ok(KeyPair {
+        alias,
+        timestamp,
+        encrypted_key: enc_key,
+        cert_chain: cert_chains,
+    })
 }
